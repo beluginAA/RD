@@ -53,7 +53,7 @@ m_df = (new_df_copy.merge(base_df_copy,
                            on=['КС1', 'КС2'],
                            suffixes=['', '_new'], # Определяет, какая подпись прибавится к столбцам
                            indicator=True))
-
+print(m_df)
 # Generate result dataframe, with remove document firstly
 print('Generating result dataframe, with remove document firstly')
 changed_df = m_df[m_df['_merge'] == 'left_only'][new_df.columns]
@@ -63,19 +63,19 @@ changed_df = m_df[m_df['_merge'] == 'left_only'][new_df.columns]
 #  Preparation columns list with necessary information
 tmp = np.append(m_df.columns[0:3].values, m_df.columns[4])
 tmp_columns = np.append(tmp, m_df.columns[8:-1].values)
-
+print(tmp_columns)
 #  Initiate dataframe of new documents
 print('Initiate dataframe of new documents')
 tmp_df = m_df[m_df['_merge'] == 'right_only'][tmp_columns]
 tmp_df.columns = changed_df.columns
-
+print(tmp_df)
 # Add dataframe with new documents to result dataframe
 changed_df = pd.concat([changed_df, tmp_df])
-
 
 #  Generate temporary dataframe for next appending for changed documents
 print('Initiate dataframe with changed documents')
 tmp_df = m_df[m_df['_merge'] == 'both'][tmp_columns]
+
 # tmp_df['Статус'] = tmp_df[['Статус Заказчика', 'Статус Заказчика_new']].apply(
 #     lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]))
 #     else f'Смена статуса с <{row[0]}> на <{row[1]}>', axis=1)
