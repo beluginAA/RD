@@ -1,18 +1,19 @@
 import pandas as pd  # module for working with data sets (need for working inner classes and modules)
 import traceback
+import numpy as np
 import os  # module for working with operating system catalog structure
 import openpyxl  # module for working with Excel files
 import time  # module for working with date and time
-import pyodbc  # module for working with databases
-import win32com.client  # Module for generating MS access data base
+# import pyodbc  # module for working with databases
+# import win32com.client  # Module for generating MS access data base
 
 from datetime import datetime  # Module for working with date and time data
-from win32com.client import Dispatch  # Module for generating MS access data base
+# from win32com.client import Dispatch  # Module for generating MS access data base
 from tkinter.filedialog import askopenfilename  # Module for open file with win gui
 
 # show an "Open" dialog box and return the path to the selected file
-filename_comp = askopenfilename(title="Select file for compare", filetypes=[("excel files", "*.xlsx")])
-filename_new = askopenfilename(title="Select new file", filetypes=[("excel files", "*.xlsx")])
+# filename_comp = askopenfilename(title="Select file for compare", filetypes=[("excel files", "*.xlsx")])
+# filename_new = askopenfilename(title="Select new file", filetypes=[("excel files", "*.xlsx")])
 
 #  Columns with necessary information
 inf_columns = ['КС1',
@@ -69,7 +70,8 @@ tmp_df = m_df[m_df['_merge'] == 'right_only'][tmp_columns]
 tmp_df.columns = changed_df.columns
 
 # Add dataframe with new documents to result dataframe
-changed_df = changed_df.append(tmp_df)
+changed_df = pd.concat([changed_df, tmp_df])
+
 
 #  Generate temporary dataframe for next appending for changed documents
 print('Initiate dataframe with changed documents')
@@ -80,7 +82,7 @@ tmp_df = m_df[m_df['_merge'] == 'both'][tmp_columns]
 tmp_df.columns = changed_df.columns
 
 # Add dataframe with new documents to result dataframe
-changed_df = changed_df.append(tmp_df)
+changed_df = pd.concat([changed_df, tmp_df])
 
 comf_ren = input('Use standard file name (y/n): ')
 while comf_ren not in 'YyNn':
@@ -91,3 +93,5 @@ if comf_ren in 'Yy':
 else:
     output_filename = input('Input result file name: ')
 changed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251')
+
+# https://habr.com/ru/company/vdsina/blog/557316/
