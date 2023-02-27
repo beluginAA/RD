@@ -1,19 +1,23 @@
 import pandas as pd  # module for working with data sets (need for working inner classes and modules)
 import traceback
+import warnings
 import numpy as np
 import os  # module for working with operating system catalog structure
 import openpyxl  # module for working with Excel files
 import time  # module for working with date and time
-# import pyodbc  # module for working with databases
-# import win32com.client  # Module for generating MS access data base
+import pyodbc  # module for working with databases
+import win32com.client  # Module for generating MS access data base
 
 from datetime import datetime  # Module for working with date and time data
-# from win32com.client import Dispatch  # Module for generating MS access data base
+from win32com.client import Dispatch  # Module for generating MS access data base
 from tkinter.filedialog import askopenfilename  # Module for open file with win gui
 
 # show an "Open" dialog box and return the path to the selected file
-# filename_comp = askopenfilename(title="Select file for compare", filetypes=[("excel files", "*.xlsx")])
-# filename_new = askopenfilename(title="Select new file", filetypes=[("excel files", "*.xlsx")])
+filename_comp = askopenfilename(title="Select file for compare", filetypes=[("excel files", "*.xlsx")])
+filename_new = askopenfilename(title="Select new file", filetypes=[("excel files", "*.xlsx")])
+
+# Ignoring pandas version errors
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #  Columns with necessary information
 inf_columns = ['Наименование объекта/комплекта РД',
@@ -38,12 +42,12 @@ col_numb = len(inf_columns)
 
 # read Excel files with current and new data
 print('Read excel files with current and new data')
-base_df = pd.read_excel('Отчет.xlsx')[inf_columns]
-base_df_1 = pd.read_excel('Отчет.xlsx', sheet_name='блок 1')[inf_columns]
-base_df_2 = pd.read_excel('Отчет.xlsx', sheet_name='блок 2')[inf_columns]
-base_df_3 = pd.read_excel('Отчет.xlsx', sheet_name='блок 3')[inf_columns]
-base_df_4 = pd.read_excel('Отчет.xlsx', sheet_name='блок 4')[inf_columns]
-new_df = pd.read_excel('РД.xlsx')
+base_df = pd.read_excel(filename_comp)[inf_columns]
+base_df_1 = pd.read_excel(filename_comp, sheet_name='блок 1')[inf_columns]
+base_df_2 = pd.read_excel(filename_comp, sheet_name='блок 2')[inf_columns]
+base_df_3 = pd.read_excel(filename_comp, sheet_name='блок 3')[inf_columns]
+base_df_4 = pd.read_excel(filename_comp, sheet_name='блок 4')[inf_columns]
+new_df = pd.read_excel(filename_new)
 
 # Finding missed rows
 print('Finding missed rows')
@@ -153,6 +157,6 @@ if comf_ren in 'Yy':
     output_filename = 'missed' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
 else:
     output_filename = input('Input result file name: ')
-changed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251')
+missed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251')
 
 # https://habr.com/ru/company/vdsina/blog/557316/
