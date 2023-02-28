@@ -1,5 +1,6 @@
 import pandas as pd  # module for working with data sets (need for working inner classes and modules)
 import traceback
+import datetime
 import warnings
 import numpy as np
 import os  # module for working with operating system catalog structure
@@ -82,7 +83,7 @@ new_df_copy = new_df.copy()
 #  Merging two dataframes
 print('Merging two dataframes')
 m_df_1 = (new_df_copy.merge(base_df_copy,
-                           how='outer',
+                           how='left',
                            on=['Коды работ по выпуску РД', 'Код KKS документа'],
                            suffixes=['', '_new'], 
                            indicator=True))
@@ -106,7 +107,7 @@ tmp_new = np.append(m_df_2.columns[:20], m_df_2.columns[-1])
 tmp_columns_new = np.append(m_df_2.columns[:4], m_df_2.columns[20:32])
 tmp_columns_new = np.append(tmp_columns_new, m_df_2.columns[16:20])
 tmp_columns_new = np.append(tmp_columns_new, m_df_2.columns[-1])
-
+print(tmp_columns)
 # Generate result dataframe, with remove document firstly
 print('Generating result dataframe, with remove document firstly')
 changed_df = m_df_1[m_df_1['_merge'] == 'left_only'][tmp]
@@ -139,24 +140,29 @@ changed_df['Статус текущей ревизии'] = changed_df['Стат�
     lambda row: base_df['Статус РД в 1С'] if row is None else row
     )
 
-comf_ren = input('Use standard file name (y/n): ')
-while comf_ren not in 'YyNn':
-    comf_ren = input('For next work choose <y> or <n> simbols): ')
-
-if comf_ren in 'Yy':
-    output_filename = 'result' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
-else:
-    output_filename = input('Input result file name: ')
+changed_df = changed_df.dropna(subset = 'Система')
+# changed_df = pd.concat([changed_df, new_df, new_df]).drop_duplicates(keep=False)
+changed_df['Дата выпуска РД по договору подрядчика'] = changed_df['Дата выпуска РД по договору подрядчика'].apply(lambda row: pd.to_datetime(row) if row != None or not row.isalpha() else row)
+output_filename = 'new' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
 changed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251')
+# comf_ren = input('Use standard file name (y/n): ')
+# while comf_ren not in 'YyNn':
+#     comf_ren = input('For next work choose <y> or <n> simbols): ')
 
-comf_ren = input('Use standard file name for missed rows (y/n): ')
-while comf_ren not in 'YyNn':
-    comf_ren = input('For next work choose <y> or <n> simbols): ')
+# if comf_ren in 'Yy':
+#     output_filename = 'result' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
+# else:
+#     output_filename = input('Input result file name: ')
+# changed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251')
 
-if comf_ren in 'Yy':
-    output_filename = 'missed' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
-else:
-    output_filename = input('Input result file name: ')
-missed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251')
+# comf_ren = input('Use standard file name for missed rows (y/n): ')
+# while comf_ren not in 'YyNn':
+#     comf_ren = input('For next work choose <y> or <n> simbols): ')
+
+# if comf_ren in 'Yy':
+#    
+# else:
+#     output_filename = input('Input result file name: ')
+# missed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251')
 
 # https://habr.com/ru/company/vdsina/blog/557316/
