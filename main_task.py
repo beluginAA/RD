@@ -67,12 +67,7 @@ base_df['Разработчики РД (актуальные)'] = base_df['Ра�
 # Removing unnecessary data
 print('Clear the unnecessary data in base dataframe')
 base_df = base_df.loc[(base_df['Коды работ по выпуску РД'].str.contains('.C.') == False)]
-base_df = base_df.loc[((base_df['Код KKS документа'].str.contains('.KZ.') == False) |
-                       (base_df['Код KKS документа'].str.contains('.EK.') == False) |
-                       (base_df['Код KKS документа'].str.contains('.TZ.') == False) |
-                       (base_df['Код KKS документа'].str.contains('.KM.') == False) |
-                       (base_df['Код KKS документа'].str.contains('.GR.') == False) 
-                       )]
+base_df = base_df.loc[(~base_df['Код KKS документа'].isin(['.KZ.', '.EK.', '.TZ.', '.KM.', '.GR.']))]
 # base_df.count()
 
 #  Making copy of original dataframes
@@ -80,7 +75,7 @@ print('Making copy of original dataframes')
 base_df_copy = base_df.copy()
 new_df_copy = new_df.copy()
 
-#  Merging two dataframes
+#  Merging two dataframes dddd
 print('Merging two dataframes')
 m_df_1 = (new_df_copy.merge(base_df_copy,
                            how='left',
@@ -98,16 +93,22 @@ m_df_2 = (tmp_df.merge(base_df_copy,
 
 #  Preparation columns list with necessary information
 tmp = np.append(m_df_1.columns[0:20].values, m_df_1.columns[-2])
-columns = np.append(m_df_2.columns[0:4], m_df_2.columns[20:32])
-columns = np.append(columns, m_df_2.columns[16:20])
-columns = np.append(columns, m_df_2.columns[-2])
-tmp_columns = np.append(m_df_1.columns[0], m_df_1.columns[20])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[2:4])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[21])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[5])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[22:32])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[16:20])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[-2])
+columns = np.concatenate((m_df_2.columns[0:4],
+                          m_df_2.columns[20:32],
+                          m_df_2.columns[16:20],
+                          m_df_2.columns[-2]),
+                          axis = None)
+tmp_columns = np.concatenate((
+    m_df_1.columns[0], 
+    m_df_1.columns[20],
+    m_df_1.columns[2:4], 
+    m_df_1.columns[21], 
+    m_df_1.columns[5], 
+    m_df_1.columns[22:32], 
+    m_df_1.columns[16:20], 
+    m_df_1.columns[-2]),
+    axis = None)
+
 
 #  Generate temporary dataframe for next appending for changed documents
 print('Initiate dataframe with changed documents')
