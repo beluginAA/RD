@@ -15,7 +15,17 @@ from tkinter.filedialog import askopenfilename  # Module for open file with win 
 
 # show an "Open" dialog box and return the path to the selected file
 filename_comp = askopenfilename(title="Select file for compare", filetypes=[("excel files", "*.xlsx")])
-filename_new = askopenfilename(title="Select new file", filetypes=[("excel files", "*.xlsx")])
+database_root = askopenfilename(title="Select database", filetypes=[('*.mdb', '*.accdb')]).replace('/', '\\')
+conn_str = (
+    r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+    fr'DBQ={database_root};'
+    )
+
+table = input("Input table's name : ")
+with pyodbc.connect(conn_str) as conn:
+    # Создаем курсор для выполнения запросов
+    query = f'''SELECT * FROM {table}'''
+    new_df = pd.read_sql(query, conn)
 
 # Ignoring pandas version errors
 warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
@@ -38,6 +48,26 @@ inf_columns = ['Наименование объекта/комплекта РД'
                'Статус РД в 1С'
                ]
 
+base_columns = ['Система',
+                'Наименование объекта/комплекта РД',
+                'Коды работ по выпуску РД',
+                'Тип',
+                'Пакет РД',	'Код KKS документа',
+                'Статус Заказчика',
+                'Текущая ревизия',
+                'Статус текущей ревизии',
+                'Дата выпуска РД по договору подрядчика',
+                'Дата выпуска РД по графику с Заказчиком',
+                'Дата статуса Заказчика',	
+                'Ожидаемая дата выдачи РД в производство',	
+                'Письма',	
+                'Источник информации',	
+                'Разработчики РД (актуальные)',	
+                'Объект',	
+                'WBS',	
+                'КС',	
+                'Примечания']
+
 #  Use columns numbers for next actions
 col_numb = len(inf_columns)
 
@@ -48,7 +78,7 @@ base_df_1 = pd.read_excel(filename_comp, sheet_name='блок 1')[inf_columns]
 base_df_2 = pd.read_excel(filename_comp, sheet_name='блок 2')[inf_columns]
 base_df_3 = pd.read_excel(filename_comp, sheet_name='блок 3')[inf_columns]
 base_df_4 = pd.read_excel(filename_comp, sheet_name='блок 4')[inf_columns]
-new_df = pd.read_excel(filename_new)
+new_df.columns = base_columns
 
 # Finding missed rows
 print('Finding missed rows')
@@ -67,12 +97,7 @@ base_df['Разработчики РД (актуальные)'] = base_df['Ра�
 # Removing unnecessary data
 print('Clear the unnecessary data in base dataframe')
 base_df = base_df.loc[(base_df['Коды работ по выпуску РД'].str.contains('.C.') == False)]
-base_df = base_df.loc[((base_df['Код KKS документа'].str.contains('.KZ.') == False) |
-                       (base_df['Код KKS документа'].str.contains('.EK.') == False) |
-                       (base_df['Код KKS документа'].str.contains('.TZ.') == False) |
-                       (base_df['Код KKS документа'].str.contains('.KM.') == False) |
-                       (base_df['Код KKS документа'].str.contains('.GR.') == False) 
-                       )]
+base_df = base_df.loc[(~base_df['Код KKS документа'].isin(['.KZ.', '.EK.', '.TZ.', '.KM.', '.GR.']))]
 # base_df.count()
 
 #  Making copy of original dataframes
@@ -80,7 +105,7 @@ print('Making copy of original dataframes')
 base_df_copy = base_df.copy()
 new_df_copy = new_df.copy()
 
-#  Merging two dataframes
+#  Merging two dataframes dddd
 print('Merging two dataframes')
 m_df_1 = (new_df_copy.merge(base_df_copy,
                            how='left',
@@ -98,16 +123,22 @@ m_df_2 = (tmp_df.merge(base_df_copy,
 
 #  Preparation columns list with necessary information
 tmp = np.append(m_df_1.columns[0:20].values, m_df_1.columns[-2])
-columns = np.append(m_df_2.columns[0:4], m_df_2.columns[20:32])
-columns = np.append(columns, m_df_2.columns[16:20])
-columns = np.append(columns, m_df_2.columns[-2])
-tmp_columns = np.append(m_df_1.columns[0], m_df_1.columns[20])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[2:4])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[21])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[5])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[22:32])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[16:20])
-tmp_columns = np.append(tmp_columns, m_df_1.columns[-2])
+columns = np.concatenate((m_df_2.columns[0:4],
+                          m_df_2.columns[20:32],
+                          m_df_2.columns[16:20],
+                          m_df_2.columns[-2]),
+                          axis = None)
+tmp_columns = np.concatenate((
+    m_df_1.columns[0], 
+    m_df_1.columns[20],
+    m_df_1.columns[2:4], 
+    m_df_1.columns[21], 
+    m_df_1.columns[5], 
+    m_df_1.columns[22:32], 
+    m_df_1.columns[16:20], 
+    m_df_1.columns[-2]),
+    axis = None)
+
 
 #  Generate temporary dataframe for next appending for changed documents
 print('Initiate dataframe with changed documents')
@@ -127,11 +158,11 @@ changed_df = pd.concat([changed_df, tmp_df])
 
 # Changing dataframe
 print('Changing dataframe')
-changed_df['Дата выпуска РД по договору подрядчика'] = pd.to_datetime(changed_df['Дата выпуска РД по договору подрядчика']).dt.date
-changed_df['Дата выпуска РД по графику с Заказчиком'] = pd.to_datetime(changed_df['Дата выпуска РД по графику с Заказчиком']).dt.date
-changed_df['Дата статуса Заказчика'] = pd.to_datetime(changed_df['Дата статуса Заказчика']).dt.date
+changed_df['Дата выпуска РД по договору подрядчика'] = pd.to_datetime(changed_df['Дата выпуска РД по договору подрядчика'], dayfirst=True).dt.date
+changed_df['Дата выпуска РД по графику с Заказчиком'] = pd.to_datetime(changed_df['Дата выпуска РД по графику с Заказчиком'], dayfirst=True).dt.date
+changed_df['Дата статуса Заказчика'] = pd.to_datetime(changed_df['Дата статуса Заказчика'], dayfirst=True).dt.date
 changed_df['Ожидаемая дата выдачи РД в производство'] = changed_df['Ожидаемая дата выдачи РД в производство'].apply(
-    lambda row: row if row == 'в производстве' or row == 'В производстве' else pd.to_datetime(row).date()
+    lambda row: row if row == 'в производстве' or row == 'В производстве' or not row  else pd.to_datetime(row).date()
     )
 changed_df['Объект'] = changed_df['Объект'].apply(
     lambda row: changed_df['Коды работ по выпуску РД'].str.slice(0, 5) if row is None else row
@@ -143,26 +174,6 @@ changed_df['WBS'] = changed_df['WBS'].apply(
     lambda row: row if row is not None else changed_df['Коды работ по выпуску РД'].apply(lambda row: row[6 : row.find('.', 6)])
     )
 
-# Preparing log dataframe
-print('Preparing log dataframe')
-log_df = m_df_2[m_df_2['_merge'] == 'left_only'][tmp]
-log_df['Дата выпуска РД по договору подрядчика'] = pd.to_datetime(log_df['Дата выпуска РД по договору подрядчика']).dt.date
-log_df['Дата выпуска РД по графику с Заказчиком'] = pd.to_datetime(log_df['Дата выпуска РД по графику с Заказчиком']).dt.date
-log_df['Дата статуса Заказчика'] = pd.to_datetime(log_df['Дата статуса Заказчика']).dt.date
-log_df['Ожидаемая дата выдачи РД в производство'] = log_df['Ожидаемая дата выдачи РД в производство'].apply(
-    lambda row: row if row == 'в производстве' or row == 'В производстве' else pd.to_datetime(row).date()
-    )
-log_df['Объект'] = log_df['Объект'].apply(
-    lambda row: log_df['Коды работ по выпуску РД'].str.slice(0, 5) if row is None else row
-    )
-log_df['Статус текущей ревизии'] =log_df['Статус текущей ревизии'].apply(
-    lambda row: log_df['Статус РД в 1С'] if row is None else row
-    )
-log_df['WBS'] = log_df['WBS'].apply(
-    lambda row: row if row is not None else log_df['Коды работ по выпуску РД'].apply(lambda row: row[6 : row.find('.', 6)])
-    )
-
-
 comf_ren = input('Use standard file name (y/n): ')
 while comf_ren not in 'YyNn':
     comf_ren = input('For next work choose <y> or <n> simbols): ')
@@ -172,14 +183,3 @@ if comf_ren in 'Yy':
 else:
     output_filename = input('Input result file name: ')
 changed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251', index = False)
-
-# Поправить данные в этой части, рассмотреть дату и время
-comf_ren = input('Use standard file name for log file (y/n): ')
-while comf_ren not in 'YyNn':
-    comf_ren = input('For next work choose <y> or <n> simbols): ')
-
-if comf_ren in 'Yy':
-   output_filename = 'log-RD-' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
-else:
-    output_filename = input('Input result file name: ')
-log_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251', index = False)
