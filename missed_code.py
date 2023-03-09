@@ -47,8 +47,8 @@ inf_columns = ['Наименование объекта/комплекта РД'
                'Письма',
                'Источник информации', 
                'Разработчики РД (актуальные)', 
-               'Статус РД в 1С'
-               ]
+               'Статус РД в 1С']
+
 changed_cols = ['Коды работ по выпуску РД',
         'Наименование объекта/комплекта РД',
        'Код KKS документа',
@@ -125,9 +125,8 @@ m_df_2 = (tmp_df.merge(base_df_copy,
                            indicator=True
                            ))
 
-m_df_2['Код KKS документа'] = m_df_2[['Код KKS документа', 'Код KKS документа_new']].apply(
-    lambda row: row[0] if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]))
-    else f'Смена кода с <{row[0]}> на <{row[1]}>', axis=1)
+m_df_2['Код KKS документа'] = m_df_2.apply(lambda row: row['Код KKS документа'] if (row['Код KKS документа'] == row['Код KKS документа_new'] or (pd.isna(row['Код KKS документа']) and pd.isna(row['Код KKS документа_new'])))
+    else f'Смена кода с <{row["Код KKS документа"]}> на <{row["Код KKS документа_new"]}>', axis=1)
 
 # Preparing log-file
 print('Preparing log-file')
@@ -163,35 +162,35 @@ m_df['Статус текущей ревизии_new'] = m_df['Статус те
     lambda row: base_df['Статус РД в 1С'] if row is None else row
     )
 m_df['Наименование объекта/комплекта РД'] = m_df[['Наименование объекта/комплекта РД', 'Наименование объекта/комплекта РД_new']].apply(
-    lambda row: row[0] if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
+    lambda row: row[0] if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not row[1]))
     else f'Смена наименования с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Пакет РД'] = m_df[['Пакет РД', 'Пакет РД_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена пакета с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Статус Заказчика'] = m_df[['Статус Заказчика', 'Статус Заказчика_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена статуса с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Текущая ревизия'] = m_df[['Текущая ревизия', 'Текущая ревизия_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена ревизии с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Статус текущей ревизии'] = m_df[['Статус текущей ревизии', 'Статус текущей ревизии_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена статуса ревизии с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Дата выпуска РД по договору подрядчика'] = m_df[['Дата выпуска РД по договору подрядчика', 'Дата выпуска РД по договору подрядчика_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена даты с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Дата выпуска РД по графику с Заказчиком'] = m_df[['Дата выпуска РД по графику с Заказчиком', 'Дата выпуска РД по графику с Заказчиком_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена даты с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Дата статуса Заказчика'] = m_df[['Дата статуса Заказчика', 'Дата статуса Заказчика_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена даты с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Ожидаемая дата выдачи РД в производство'] = m_df[['Ожидаемая дата выдачи РД в производство', 'Ожидаемая дата выдачи РД в производство_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена даты с <{row[0]}> на <{row[1]}>', axis=1)
-m_df['Разработчики РД (актуальные)'] = m_df[['Разработчики РД (актуальные)', 'Разработчики РД (актуальные)_new']].apply(
-    lambda row: None if (row[0] == row[1] or (not row[0] == row[0] and not row[1] == row[1]) or (not row[0] and not not row[1]))
-    else f'Смена разработчика с <{row[0]}> на <{row[1]}>', axis=1)
+m_df['Пакет РД'] = m_df.apply(lambda row: None 
+        if row['Пакет РД'] == row['Пакет РД_new'] or (pd.isna(row['Пакет РД']) and pd.isna(row['Пакет РД_new'])) 
+        else f'Смена пакета с <{row["Пакет РД"]}> на <{row["Пакет РД_new"]}>', axis=1)
+m_df['Статус Заказчика'] = m_df.apply(lambda row: None 
+        if row['Статус Заказчика'] == row['Статус Заказчика_new'] or (pd.isna(row['Статус Заказчика']) and pd.isna(row['Статус Заказчика_new']))
+        else f'Смена статуса с <{row["Статус Заказчика"]}> на <{row["Статус Заказчика_new"]}>', axis=1)
+m_df['Текущая ревизия'] = m_df.apply(lambda row: None 
+    if row['Текущая ревизия'] == row['Текущая ревизия_new'] or (pd.isna(row['Текущая ревизия']) and pd.isna(row['Текущая ревизия_new']))
+    else f'Смена ревизии с <{row["Текущая ревизия"]}> на <{row["Текущая ревизия_new"]}>', axis=1)
+m_df['Статус текущей ревизии'] = m_df.apply(lambda row: None 
+    if row['Статус текущей ревизии'] == row['Статус текущей ревизии_new'] or (pd.isna(row['Статус текущей ревизии']) and pd.isna(row['Статус текущей ревизии_new']))
+    else f'Смена статуса ревизии с <{row["Статус текущей ревизии"]}> на <{row["Статус текущей ревизии_new"]}>', axis=1)
+m_df['Дата выпуска РД по договору подрядчика'] = m_df.apply(lambda row: None 
+    if row['Дата выпуска РД по договору подрядчика'] == row['Дата выпуска РД по договору подрядчика_new'] or (pd.isna(row['Дата выпуска РД по договору подрядчика']) and pd.isna(row['Дата выпуска РД по договору подрядчика_new']))
+    else f'Смена даты с <{row["Дата выпуска РД по договору подрядчика"]}> на <{row["Дата выпуска РД по договору подрядчика_new"]}>', axis=1)
+m_df['Дата выпуска РД по графику с Заказчиком'] = m_df.apply(lambda row: None 
+    if row['Дата выпуска РД по графику с Заказчиком'] == row['Дата выпуска РД по графику с Заказчиком_new'] or (pd.isna(row['Дата выпуска РД по графику с Заказчиком']) and pd.isna(row['Дата выпуска РД по графику с Заказчиком_new']))
+    else f'Смена даты с <{row["Дата выпуска РД по графику с Заказчиком"]}> на <{row["Дата выпуска РД по графику с Заказчиком_new"]}>', axis=1)
+m_df['Дата статуса Заказчика'] = m_df.apply(lambda row: None 
+    if row['Дата статуса Заказчика'] == row['Дата статуса Заказчика_new'] or (pd.isna(row['Дата статуса Заказчика']) and pd.isna(row['Дата статуса Заказчика_new']))
+    else f'Смена даты с <{row["Дата статуса Заказчика"]}> на <{row["Дата статуса Заказчика_new"]}>', axis=1)
+m_df['Ожидаемая дата выдачи РД в производство'] = m_df.apply(lambda row: None 
+    if row['Ожидаемая дата выдачи РД в производство'] == row['Ожидаемая дата выдачи РД в производство_new'] or (pd.isna(row['Ожидаемая дата выдачи РД в производство']) and pd.isna(row['Ожидаемая дата выдачи РД в производство_new']))
+    else f'Смена даты с <{row["Ожидаемая дата выдачи РД в производство"]}> на <{row["Ожидаемая дата выдачи РД в производство_new"]}>', axis=1)
+m_df['Разработчики РД (актуальные)'] = m_df.apply(lambda row: None 
+    if row['Разработчики РД (актуальные)'] == row['Разработчики РД (актуальные)_new'] or (pd.isna(row['Разработчики РД (актуальные)']) and pd.isna(row['Разработчики РД (актуальные)_new']))
+    else f'Смена разработчика с <{row["Разработчики РД (актуальные)"]}> на <{row["Разработчики РД (актуальные)_new"]}>', axis=1)
 
 m_df = m_df.reset_index()[changed_cols]
 missed = missed_code[missed_code['_merge'] == 'left_only'].reset_index()[columns]
