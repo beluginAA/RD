@@ -27,7 +27,6 @@ conn_str = (
 
 table = input("Input table's name : ")
 with pyodbc.connect(conn_str) as conn:
-    # Создаем курсор для выполнения запросов
     query = f'''SELECT * FROM {table}'''
     new_df = pd.read_sql(query, conn)
 
