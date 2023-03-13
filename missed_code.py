@@ -224,13 +224,6 @@ with open(f'{output_filename}.txt', 'w') as log_file:
     for index, row in missed.iterrows():
         log_file.write(f'{str(index)}\t{row["Коды работ по выпуску РД"]}\t | \t{row["Наименование объекта/комплекта РД"]}\n')
 
-with pyodbc.connect(conn_str) as conn:
-    # Создаем курсор для выполнения запросов
-    query = f'''SELECT * FROM {table}'''
-    new_df = pd.read_sql(query, conn)
-
-# Ignoring pandas version errors
-warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
 
 #  Columns with necessary information
 inf_columns = ['Наименование объекта/комплекта РД',
@@ -275,48 +268,31 @@ col_numb = len(inf_columns)
 
 # read Excel files with current and new data
 print('Read excel files with current and new data')
-base_df = pd.read_excel(filename_comp)[inf_columns]
+new_base_df = base_df.copy()
+new_new_df = new_df.copy()
 base_df_1 = pd.read_excel(filename_comp, sheet_name='блок 1')[inf_columns]
 base_df_2 = pd.read_excel(filename_comp, sheet_name='блок 2')[inf_columns]
 base_df_3 = pd.read_excel(filename_comp, sheet_name='блок 3')[inf_columns]
 base_df_4 = pd.read_excel(filename_comp, sheet_name='блок 4')[inf_columns]
-new_df.columns = base_columns
+new_new_df.columns = base_columns
 
 # Finding missed rows
 print('Finding missed rows')
-missed_df = pd.concat([base_df, base_df_1, base_df_1]).drop_duplicates(keep=False)
+missed_df = pd.concat([new_base_df, base_df_1, base_df_1]).drop_duplicates(keep=False)
 missed_df = pd.concat([missed_df, base_df_2, base_df_2]).drop_duplicates(keep=False)
 missed_df = pd.concat([missed_df, base_df_3, base_df_3]).drop_duplicates(keep=False)
 missed_df = pd.concat([missed_df, base_df_4, base_df_4]).drop_duplicates(keep=False)
 
-#  Clear the data in both dataframe
-print('Clear the empty rows in both dataframes')
-base_df = base_df.dropna(subset=['Коды работ по выпуску РД'])
-base_df['Разработчики РД (актуальные)'] = base_df['Разработчики РД (актуальные)'].apply(
-    lambda row: base_df['Разработчик РД'] if row is None else row
-    )
-
-# Removing unnecessary data
-print('Clear the unnecessary data in base dataframe')
-base_df = base_df.loc[(base_df['Коды работ по выпуску РД'].str.contains('.C.') == False)]
-base_df = base_df.loc[(~base_df['Код KKS документа'].isin(['.KZ.', '.EK.', '.TZ.', '.KM.', '.GR.']))]
-# base_df.count()
-
-#  Making copy of original dataframes
-print('Making copy of original dataframes')
-base_df_copy = base_df.copy()
-new_df_copy = new_df.copy()
-
 #  Merging two dataframes dddd
 print('Merging two dataframes')
-m_df_1 = (new_df_copy.merge(base_df_copy,
+m_df_1 = (new_new_df.merge(new_base_df,
                            how='left',
                            on=['Коды работ по выпуску РД', 'Код KKS документа'],
                            suffixes=['', '_new'], 
                            indicator=True))
 
-tmp_df = m_df_1[m_df_1['_merge'] == 'left_only'][new_df_copy.columns]
-m_df_2 = (tmp_df.merge(base_df_copy,
+tmp_df = m_df_1[m_df_1['_merge'] == 'left_only'][new_new_df.columns]
+m_df_2 = (tmp_df.merge(new_base_df,
                            how='left',
                            on=['Коды работ по выпуску РД', 'Наименование объекта/комплекта РД'],
                            suffixes=['', '_new'],

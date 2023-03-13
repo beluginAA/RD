@@ -19,6 +19,7 @@ from tkinter.filedialog import askopenfilename  # Module for open file with win 
 warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
 
 # show an "Open" dialog box and return the path to the selected file
+flag = False
 filename_comp = askopenfilename(title="Select file for compare", filetypes=[("Excel Files", "*.xlsx"), ("Excel Binary Workbook", "*.xlsb")])
 database_root = askopenfilename(title="Select database", filetypes=[('*.mdb', '*.accdb')]).replace('/', '\\')
 conn_str = (
@@ -56,13 +57,6 @@ def convert_date(row):
             return pd.to_datetime(row, dayfirst=dayfirst).date()
         else: 
             return pd.to_datetime(row, format='%Y/%m/%d').date()
-    
-#Function for changing status
-def change_data(df, col_1, col_2):
-    if ~pd.isna(df[col_1]):
-        return df[col_2]
-    else:
-        return df[col_1]
 
 # Function for changing_developer
 def change_developer(df):
@@ -79,11 +73,11 @@ def change_status(df):
         return df['Статус текущей ревизии_new']
 
 #Function for changing data
-def changing_data(df):
-    if (df[f'{col}'] == df[f'{col}_new']) or (pd.isna(df[f'{col}']) and pd.isna(df[f'{col}_new'])):
+def changing_data(row):
+    if (row[col] == row[f'{col}_new']) or (pd.isna(row[col]) and pd.isna(row[f'{col}_new'])):
         return None
     else:
-        return f'Смена {col.lower()} с <{df[f"{col}"]}> на <{df[f"{col}_new"]}>'
+        return f'Смена {col.lower()} с <{row[col]}> на <{row[f"{col}_new"]}>'
 
 #Columns for changing dataframe
 
@@ -157,6 +151,7 @@ if '.xlsb' in filename_comp:
             for row in sheet.rows():
                 data.append([item.v for item in row])
     base_df = pd.DataFrame(data[1:], columns=data[0])
+    flag = True
 else: 
     base_df = pd.read_excel(filename_comp)
 new_df.columns = base_columns
@@ -206,21 +201,31 @@ print('Converting types')
 m_df_1['Статус текущей ревизии_new'] = m_df_1.apply(change_status, axis = 1)
 m_df_2['Статус текущей ревизии_new'] = m_df_2.apply(change_status, axis = 1)
 
-for col in convert_columns:
-    if 'new' in col:
-        m_df_1[col] = m_df_1[col].apply(convert_date)
-        m_df_2[col] = m_df_2[col].apply(convert_date)
-    else:
-        dayfirst = True
-        m_df_1[col] = m_df_1[col].apply(convert_date)
-        m_df_2[col] = m_df_2[col].apply(convert_date)
+if flag:  
+    for col in convert_columns:
+        dayfirst = False
+        if 'new' in col:
+            m_df_1[col] = m_df_1[col].apply(lambda row: row if type(row) is str or row in ['в производстве', 'В производстве', None] else pd.to_datetime(row, unit='D', origin='1900-01-01').date() - pd.Timedelta(days=2))
+            m_df_2[col] = m_df_2[col].apply(lambda row: row if type(row) is str or row in ['в производстве', 'В производстве', None] else pd.to_datetime(row, unit='D', origin='1900-01-01').date() - pd.Timedelta(days=2))
+        else:
+            dayfirst = True
+            m_df_1[col] = m_df_1[col].apply(convert_date)
+            m_df_2[col] = m_df_2[col].apply(convert_date)
+else:
+    for col in convert_columns:
+        dayfirst = False
+        if 'new' in col:
+            m_df_1[col] = m_df_1[col].apply(convert_date)
+            m_df_2[col] = m_df_2[col].apply(convert_date)
+        else:
+            dayfirst = True
+            m_df_1[col] = m_df_1[col].apply(convert_date)
+            m_df_2[col] = m_df_2[col].apply(convert_date)
 
 for col in clmns:
-    m_df_1[f'{col}'] = m_df_1.apply(changing_data)
-    m_df_2[f'{col}'] = m_df_2.apply(changing_data)
+    m_df_1[col] = m_df_1.apply(changing_data, axis = 1)
+    m_df_2[col] = m_df_2.apply(changing_data, axis = 1)
 
-# Preparing dataframe
-print('Preparing dataframe')
 m_df = pd.concat([m_df_1[changed_cols], m_df_2[changed_cols]])
 m_df = m_df.reset_index()[changed_cols]
 missed = missed_code[missed_code['_merge'] == 'left_only'].reset_index()[['Система', 'Коды работ по выпуску РД', 'Наименование объекта/комплекта РД']]
@@ -254,3 +259,5 @@ with open(f'{output_filename}.txt', 'w') as log_file:
     log_file.write('     Коды работ по выпуску РД' + '\t | \t' + 'Наименование объекта/комплекта РД\n')
     for index, row in missed.iterrows():
         log_file.write(f'{str(index)}\t{row["Коды работ по выпуску РД"]}\t | \t{row["Наименование объекта/комплекта РД"]}\n')
+
+# Этот код полностью готов, принимает любые файлы и возвращает лог файл с измененными значениями
