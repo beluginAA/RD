@@ -8,11 +8,10 @@ import os  # module for working with operating system catalog structure
 import openpyxl  # module for working with Excel files
 import time  # module for working with date and time
 import pyodbc  # module for working with databases
-import win32com.client  # Module for generating MS access data base
 import pyxlsb
+import threading
 
 from datetime import datetime  # Module for working with date and time data
-from win32com.client import Dispatch  # Module for generating MS access data base
 from tkinter.filedialog import askopenfilename  # Module for open file with win gui
 
 # Ignoring pandas version errors
@@ -185,14 +184,17 @@ m_df_1 = (pd.merge(new_df_copy, base_df_copy,
                            suffixes=['', '_new'], 
                            indicator=True))
 tmp_df = m_df_1[m_df_1['_merge'] == 'left_only'][new_df_copy.columns]
-m_df_1 = m_df_1[m_df_1['_merge'] == 'both']
-m_df_1['Наименование объекта/комплекта РД'] = m_df_1.apply(lambda row: changing_name(row), axis = 1)
 
 m_df_2 = (tmp_df.merge(base_df_copy,
                            how='left',
                            on=['Коды работ по выпуску РД', 'Наименование объекта/комплекта РД'],
                            suffixes=['', '_new'],
                            indicator=True))
+
+# на данном этапе можно выполнить копирование и запуск второго потока
+
+m_df_1 = m_df_1[m_df_1['_merge'] == 'both']
+m_df_1['Наименование объекта/комплекта РД'] = m_df_1.apply(lambda row: changing_name(row), axis = 1)
 m_df_2 = m_df_2[m_df_2['_merge'] == 'both']
 m_df_2['Код KKS документа'] = m_df_2.apply(lambda row: changing_code(row), axis = 1)
 
@@ -261,3 +263,36 @@ with open(f'{output_filename}.txt', 'w') as log_file:
         log_file.write(f'{str(index)}\t{row["Коды работ по выпуску РД"]}\t | \t{row["Наименование объекта/комплекта РД"]}\n')
 
 # Этот код полностью готов, принимает любые файлы и возвращает лог файл с измененными значениями
+# Подумать над реализацией многопоточности
+
+# import threading
+# import time
+
+# # Программа создает 10 потоков, доводит их до команды wait, проверяет условие, что количество потоков должно быть больше 10
+# # Далее ставит значение event как True и идет дальше
+
+# event = threading.Event() # На этом этапе значение автоматически устанавливается как False
+
+# def image_handler():
+#     thr_num = threading.currentThread().name
+#     print(f'Идет подготовка изображения из потока [{thr_num}]')
+#     event.wait()
+#     print(f'Изображение отправлено')
+
+# # def test():
+# #     while True:
+# #         event.wait() # Процесс продолжится только тогда, когда значение event = True
+# #         print('test')
+# #         time.sleep(2)
+
+# # event.clear() # Сброс значения event до значения False
+# for i in range(10):
+#     threading.Thread(target=image_handler, name = str(i)).start()
+#     print(f'Поток [{i}] запущен')
+#     time.sleep(1)
+
+# if threading.active_count() >= 10:
+#     event.set() # Задается значение True этой командой
+
+# time.sleep(10)
+# event.set()
