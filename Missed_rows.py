@@ -197,17 +197,71 @@ def new_threading(df_1, df_2):
     changed_df['Объект'] = changed_df['Объект'].apply(lambda row: changed_df['Коды работ по выпуску РД'].str.slice(0, 5) if pd.isna(row) else row)
     changed_df['Статус текущей ревизии'] = changed_df.apply(change, axis = 1)
     changed_df['WBS'] = changed_df['WBS'].apply(lambda row: row if ~pd.isna(row) else changed_df['Коды работ по выпуску РД'].apply(lambda row: row[6 : row.find('.', 6)]))
+    changed_df = changed_df.iloc[:, :-1]
+    changed_df.columns = changed_columns
 
     event.wait()
-    comf_ren = input('Use standard file name (y/n): ')
-    while comf_ren not in 'YyNn':
-        comf_ren = input('For next work choose <y> or <n> simbols): ')
+    # comf_ren = input('Use standard file name (y/n): ')
+    # while comf_ren not in 'YyNn':
+    #     comf_ren = input('For next work choose <y> or <n> simbols): ')
 
-    if comf_ren in 'Yy':
-        output_filename = 'result' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
-    else:
-        output_filename = input('Input result file name: ')
-    changed_df.to_excel(f'./{output_filename}.xlsx', encoding='cp1251', index = False)
+    # if comf_ren in 'Yy':
+    #     output_filename = 'result' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
+    # else:
+    #     output_filename = input('Input result file name: ')
+    # changed_df.iloc[:, :-1].to_excel(f'./{output_filename}.xlsx', encoding='cp1251', index = False)
+
+    cnxn = pyodbc.connect(conn_str)
+
+    # Создаем курсор
+    cursor = cnxn.cursor()
+    table_name = input("Input tables's name: ")
+    cursor.execute(f"DROP TABLE [{table_name}]")
+    cnxn.commit()
+
+    cursor = cnxn.cursor()
+
+    create_table_query = '''CREATE TABLE [РД] ([Система] VARCHAR(200), 
+                                            [Наименование] VARCHAR(200),
+                                            [Код] VARCHAR(200),
+                                            [Тип] VARCHAR(200),
+                                            [Пакет] VARCHAR(200),
+                                            [Шифр] VARCHAR(200),
+                                            [Итог_статус] VARCHAR(200),
+                                            [Ревизия] VARCHAR(200), 
+                                            [Рев_статус] VARCHAR(200), 
+                                            [Дата_план] VARCHAR(200), 
+                                            [Дата_граф] VARCHAR(200), 
+                                            [Рев_дата] VARCHAR(200), 
+                                            [Дата_ожид] VARCHAR(200), 
+                                            [Письмо] VARCHAR(200), 
+                                            [Источник] VARCHAR(200), 
+                                            [Разработчик] VARCHAR(200), 
+                                            [Объект] VARCHAR(200), 
+                                            [WBS] VARCHAR(200), 
+                                            [КС] VARCHAR(200), 
+                                            [Примечания] VARCHAR(200))'''
+    cursor.execute(create_table_query)
+    cnxn.commit()
+    cursor = cnxn.cursor()
+    for row in changed_df.itertuples(index=False):
+        insert_query = f'''INSERT INTO [РД] ([Система], [Наименование], [Код], [Тип], [Пакет], [Шифр], [Итог_статус], [Ревизия], 
+                                             [Рев_статус], 
+                                             [Дата_план], 
+                                             [Дата_граф], 
+                                             [Рев_дата], 
+                                             [Дата_ожид], 
+                                             [Письмо], 
+                                             [Источник], 
+                                             [Разработчик], 
+                                             [Объект], 
+                                             [WBS], 
+                                             [КС], 
+                                             [Примечания]) VALUES ({",".join(f"'{x}'" for x in row)})'''
+        cursor.execute(insert_query)
+    cnxn.commit()
+    cursor.close()
+    cnxn.close()
 
     end_time = time.time()
     print(end_time - start_time)
@@ -271,19 +325,16 @@ if '.xlsb' in filename_comp:
     flag = True
 else: 
     base_df = pd.read_excel(filename_comp)
+changed_columns = new_df.columns
 new_df.columns = base_columns
 
 #  Clearing dataframes
 print('Clearing dataframes')
 base_df = base_df.dropna(subset=['Коды работ по выпуску РД'])
 base_df['Разработчики РД (актуальные)'] = base_df.apply(change_developer, axis = 1)
-base_df = base_df[~base_df['Коды работ по выпуску РД'].str.contains('.C.', regex=False)]
+base_df = base_df[~base_df['Коды работ по выпуску РД'].str.contains('\.C\.', regex=False)]
 base_df['Код KKS документа'] = base_df['Код KKS документа'].astype(str)
 base_df = base_df.loc[~base_df['Код KKS документа'].str.contains('\.KZ\.|\.EK\.|\.TZ\.|\.KM\.|\.GR\.')]
-
-#  Missed rows
-missed_code = new_df[~new_df['Коды работ по выпуску РД'].str.lower().str.strip().isin(base_df['Коды работ по выпуску РД'].str.lower().str.strip())]
-missed_code = missed_code.reset_index()[['Система', 'Коды работ по выпуску РД', 'Наименование объекта/комплекта РД']]
 
 #  Making copy of original dataframes
 print('Making copy of original dataframes')
@@ -305,13 +356,21 @@ m_df_2 = (tmp_df.merge(base_df_copy,
                            suffixes=['', '_new'],
                            indicator=True))
 
+#  Missed rows
+missed_rows = m_df_2[m_df_2['_merge'] == 'left_only'].reset_index()
+missed_rows[['Система', 'Коды работ по выпуску РД', 'Наименование объекта/комплекта РД']]
+
 #Changing dates
 if flag:  
     for col in convert_columns:
         dayfirst = False
         if 'new' in col:
-            m_df_1[col] = m_df_1[col].apply(lambda row: row if type(row) is str or row in ['в производстве', 'В производстве', None] else pd.to_datetime(row, unit='D', origin='1900-01-01').date() - pd.Timedelta(days=2))
-            m_df_2[col] = m_df_2[col].apply(lambda row: row if type(row) is str or row in ['в производстве', 'В производстве', None] else pd.to_datetime(row, unit='D', origin='1900-01-01').date() - pd.Timedelta(days=2))
+            m_df_1[col] = m_df_1[col].apply(
+                lambda row: row if type(row) is str or row in ['в производстве', 'В производстве', None] else pd.to_datetime(row, unit='D', origin='1900-01-01').date() - pd.Timedelta(days=2)
+                )
+            m_df_2[col] = m_df_2[col].apply(
+                lambda row: row if type(row) is str or row in ['в производстве', 'В производстве', None] else pd.to_datetime(row, unit='D', origin='1900-01-01').date() - pd.Timedelta(days=2)
+                )
         else:
             dayfirst = True
             m_df_1[col] = m_df_1[col].apply(convert_date)
@@ -355,36 +414,36 @@ max_len_row = [max(m_df[row].apply(lambda x: len(str(x)) if x else 0)) for row i
 max_len_name = [len(row) for row in changed_cols]
 max_len = [col_len if col_len > row_len else row_len for col_len, row_len in zip(max_len_name, max_len_row)]
 cols = ['Система', 'Коды работ по выпуску РД', 'Наименование объекта/комплекта РД']
-max_missed_row = [max(missed_code[row].apply(lambda x: len(str(x)) if x else 0)) for row in  cols]
+max_missed_row = [max(missed_rows[row].apply(lambda x: len(str(x)) if x else 0)) for row in  cols]
 max_missed_name = [len(row) for row in  cols]
 max_missed = [col_len if col_len > row_len else row_len for col_len, row_len in zip(max_missed_name,max_missed_row)]
 output_filename = 'log-RD-' + str(datetime.now().isoformat(timespec='minutes')).replace(':', '_')
-with open(f'{output_filename}.txt', 'w') as log_file:
-    log_file.write('Список измененных значений:\n')
-    log_file.write('\n')
-    file_write = ' ' * (len(str(m_df.index.max())) + 3)
-    for column, col_len in zip(changed_cols, max_len):
-        file_write += f"{column:<{col_len}}|"
-    log_file.write(file_write)
-    log_file.write('\n')
-    for index, row in m_df.iterrows():
-        column_value = ''
-        for i in range(len(changed_cols)):
-            column_value += f"{str(row[changed_cols[i]]) if row[changed_cols[i]] else '-':<{max_len[i]}}|"
-        log_file.write(f"{index: <{len(str(m_df.index.max()))}} | {column_value}\n")
-    log_file.write('\n')
-    log_file.write('Список отсутствующих кодов.\n')
-    log_file.write('\n')
-    file_write = ' ' * (len(str(m_df.index.max())) + 2)
-    for column, col_len in zip(cols, max_missed):
-        file_write += f"{column:<{col_len}}|"
-    log_file.write(file_write)
-    log_file.write('\n')
-    for index, row in missed_code.iterrows():
-        column_value = ''
-        for i in range(len(cols)):
-            column_value += f"{str(row[cols[i]]) if row[cols[i]] else '-':<{max_missed[i]}}|"
-        log_file.write(f"{index: <{len(str(missed_code.index.max()))}} | {column_value}\n")
+# with open(f'{output_filename}.txt', 'w') as log_file:
+#     log_file.write('Список измененных значений:\n')
+#     log_file.write('\n')
+#     file_write = ' ' * (len(str(m_df.index.max())) + 3)
+#     for column, col_len in zip(changed_cols, max_len):
+#         file_write += f"{column:<{col_len}}|"
+#     log_file.write(file_write)
+#     log_file.write('\n')
+#     for index, row in m_df.iterrows():
+#         column_value = ''
+#         for i in range(len(changed_cols)):
+#             column_value += f"{str(row[changed_cols[i]]) if row[changed_cols[i]] else '-':<{max_len[i]}}|"
+#         log_file.write(f"{index: <{len(str(m_df.index.max()))}} | {column_value}\n")
+#     log_file.write('\n')
+#     log_file.write('Список отсутствующих кодов.\n')
+#     log_file.write('\n')
+#     file_write = ' ' * (len(str(m_df.index.max())) + 2)
+#     for column, col_len in zip(cols, max_missed):
+#         file_write += f"{column:<{col_len}}|"
+#     log_file.write(file_write)
+#     log_file.write('\n')
+#     for index, row in missed_rows.iterrows():
+#         column_value = ''
+#         for i in range(len(cols)):
+#             column_value += f"{str(row[cols[i]]) if row[cols[i]] else '-':<{max_missed[i]}}|"
+#         log_file.write(f"{index: <{len(str(missed_rows.index.max()))}} | {column_value}\n")
 
 # Continue new thread
 event.set()
