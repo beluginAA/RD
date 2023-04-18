@@ -63,7 +63,7 @@ rdKksDf = (pd.merge(excelDatabaseCopy, msDatabaseCopy, #m_df_1
 dfPath =rdKksDf[rdKksDf['_merge'] == 'right_only'][columns.mdf1_columns] #tmp_df
 dfPath.columns = columns.new_columns
 
-rdNameDf = (dfPath.merge(excelDatabaseCopy, # m_df_2
+rdNameDf = (dfPath.iloc[:, :-1].merge(excelDatabaseCopy, # m_df_2
                            how='outer',
                            on=['Коды работ по выпуску РД', 'Наименование объекта/комплекта РД'],
                            suffixes=['', '_new'],
@@ -115,6 +115,7 @@ resultExcelDf.columns = changedColumns
 for col in resultExcelDf.columns:
     resultExcelDf[col] = resultExcelDf.apply(lambda df: func.finding_empty_rows(df, col), axis = 1)
     summaryDf[col] = summaryDf.apply(lambda df: func.finding_empty_rows(df, col), axis = 1)
+resultThread.join()
 result.to_resultfile(resultExcelDf)
 
 mainLogger.info('Making changes to the database.')
